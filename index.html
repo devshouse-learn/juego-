@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Survival Zombie 3D - Ultra Realista</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- HUD del juego -->
+    <div id="hud">
+        <div class="hud-item">
+            <span id="vida">Vida: 100</span>
+        </div>
+        <div class="hud-item">
+            <span id="municion">Munición: 30/120</span>
+        </div>
+        <div class="hud-item">
+            <span id="zombies">Zombies: 0</span>
+        </div>
+        <div class="hud-item">
+            <span id="puntos">Puntos: 0</span>
+        </div>
+        <div class="hud-item">
+            <span id="clima">Clima: Despejado</span>
+        </div>
+        <div class="hud-item">
+            <span id="hora">Hora: 12:00</span>
+        </div>
+        <div class="hud-item">
+            <span id="arma-actual">Arma: Pistola</span>
+        </div>
+        <div class="hud-item">
+            <button id="btn-reinicio-rapido" class="btn-hud">🔄 REINICIAR</button>
+        </div>
+    </div>
+
+    <!-- Minimapa -->
+    <div id="minimapa">
+        <canvas id="canvas-minimapa" width="200" height="200"></canvas>
+        <div class="minimapa-leyenda">
+            <span style="color: #00ff00;">● Tú</span>
+            <span style="color: #ff0000;">● Zombies</span>
+            <span style="color: #ffff00;">● Cofres</span>
+        </div>
+    </div>
+
+    <!-- Controles de cámara -->
+    <div id="controles-camara">
+        <button id="btn-vista" class="btn-vista">📷 Vista: Primera Persona</button>
+    </div>
+
+    <!-- Inventario -->
+    <div id="inventario" style="display: none;">
+        <h2>INVENTARIO</h2>
+        <div id="items-inventario"></div>
+        <p class="info-inventario">Presiona I para cerrar</p>
+    </div>
+
+    <!-- Controles -->
+    <div id="controles">
+        <h3>CONTROLES</h3>
+        <p><strong>WASD</strong> - Movimiento</p>
+        <p><strong>Espacio</strong> - Saltar</p>
+        <p><strong>Mouse</strong> - Mirar</p>
+        <p><strong>Click Izq.</strong> - Disparar</p>
+        <p><strong>R</strong> - Recargar</p>
+        <p><strong>E</strong> - Interactuar/Recoger</p>
+        <p><strong>I</strong> - Inventario</p>
+        <p><strong>C</strong> - Agacharse</p>
+        <p><strong>Shift</strong> - Correr</p>
+        <p><strong>F</strong> - Linterna</p>
+        <p><strong>1-5</strong> - Armas</p>
+        <p><strong>V</strong> - Cambiar Vista</p>
+        <p><strong>7</strong> - Cambiar Clima</p>
+        <p><strong>8</strong> - Acelerar Tiempo</p>
+        <p><strong>9</strong> - Ralentizar Tiempo</p>
+        <p><strong>0</strong> - Medio Día</p>
+        <p><strong>Click</strong> - Comenzar</p>
+    </div>
+
+    <!-- Mensaje de recarga -->
+    <div id="mensaje-recarga" style="display: none;">
+        <h1>RECARGANDO...</h1>
+    </div>
+
+    <!-- Botón de pausa -->
+    <div id="boton-pausa">
+        <button id="btn-pausa">⏸ PAUSA (ESC)</button>
+    </div>
+
+    <!-- Menú de pausa -->
+    <div id="menu-pausa" style="display: none;">
+        <h1>JUEGO PAUSADO</h1>
+        <div class="menu-opciones">
+            <button class="btn-menu" id="btn-reanudar">▶ Reanudar</button>
+            <button class="btn-menu" id="btn-opciones">⚙ Opciones</button>
+            <button class="btn-menu" id="btn-reiniciar">🔄 Reiniciar</button>
+            <button class="btn-menu" id="btn-salir">🚪 Salir al Menú</button>
+        </div>
+        <p class="info-pausa">Presiona ESC para reanudar</p>
+    </div>
+
+    <!-- Menú de opciones -->
+    <div id="menu-opciones-config" style="display: none;">
+        <h2>OPCIONES</h2>
+        <div class="opciones-container">
+            <div class="opcion-item">
+                <label>Sensibilidad del Mouse:</label>
+                <input type="range" id="sensibilidad" min="1" max="10" value="5">
+                <span id="valor-sensibilidad">5</span>
+            </div>
+            <div class="opcion-item">
+                <label>Volumen General:</label>
+                <input type="range" id="volumen" min="0" max="100" value="50">
+                <span id="valor-volumen">50%</span>
+            </div>
+            <div class="opcion-item">
+                <label>Calidad Gráfica:</label>
+                <select id="calidad">
+                    <option value="baja">Baja</option>
+                    <option value="media" selected>Media</option>
+                    <option value="alta">Alta</option>
+                    <option value="ultra">Ultra</option>
+                </select>
+            </div>
+            <div class="opcion-item">
+                <label>Campo de Visión (FOV):</label>
+                <input type="range" id="fov" min="60" max="120" value="75">
+                <span id="valor-fov">75°</span>
+            </div>
+            <div class="opcion-item">
+                <label>Mostrar FPS:</label>
+                <input type="checkbox" id="mostrar-fps">
+            </div>
+            <div class="opcion-item">
+                <label>Invertir Mouse Y:</label>
+                <input type="checkbox" id="invertir-y">
+            </div>
+        </div>
+        <button class="btn-menu" id="btn-volver">← Volver</button>
+    </div>
+
+    <!-- FPS Counter -->
+    <div id="fps-counter" style="display: none;">
+        <span id="fps-value">60 FPS</span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
