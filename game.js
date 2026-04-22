@@ -82,7 +82,7 @@ function init() {
     crearPlayer();
     
     // Generar contenido inicial
-    generarZombies(10);
+    generarZombies(15);
     // Items solo salen de cajas, no se generan en el suelo
 
     // Configurar controles
@@ -211,6 +211,11 @@ function crearEdificios() {
 
         grupo.position.x = (Math.random() - 0.5) * 180;
         grupo.position.z = (Math.random() - 0.5) * 180;
+
+        // No generar cerca del spawn del jugador (0, 5)
+        if (Math.abs(grupo.position.x) < ancho + 5 && Math.abs(grupo.position.z - 5) < profundo + 5) {
+            grupo.position.x += (grupo.position.x >= 0 ? 1 : -1) * (ancho + 10);
+        }
 
         // Registrar colisión del edificio
         colisionables.push({
@@ -460,36 +465,182 @@ function generarZombies(cantidad) {
     }
 }
 
+// Generar zombies mejorados según oleada
+function generarZombiesMejorados(cantidad, oleada) {
+    for (let i = 0; i < cantidad; i++) {
+        const zombie = crearModeloZombie();
+
+        let x, z;
+        do {
+            x = (Math.random() - 0.5) * 120;
+            z = (Math.random() - 0.5) * 120;
+        } while (Math.abs(x) < 10 && Math.abs(z) < 10);
+
+        zombie.position.set(x, 0, z);
+
+        // Escalar dificultad por oleada
+        const velBase = 0.12 + oleada * 0.03;
+        const vidaBase = 100 + oleada * 30;
+        const dañoExtra = oleada * 3;
+
+        zombie.userData.vida = vidaBase;
+        zombie.userData.velocidad = velBase + Math.random() * 0.06;
+        zombie.userData.tipo = 'zombie';
+        zombie.userData.ultimaIA = 0;
+        zombie.userData.dañoExtra = dañoExtra;
+
+        // Zombies más fuertes se ven más oscuros/rojos
+        if (oleada > 0) {
+            zombie.traverse((child) => {
+                if (child.isMesh && child.material && child.material.color) {
+                    child.material = child.material.clone();
+                    child.material.color.lerp(new THREE.Color(0x880000), Math.min(oleada * 0.15, 0.6));
+                }
+            });
+        }
+
+        scene.add(zombie);
+        zombies.push(zombie);
+    }
+}
+
+// Crear modelo 3D de item según tipo
+function crearModeloItem(tipo) {
+    const grupo = new THREE.Group();
+    
+    switch (tipo) {
+        case 'municion': {
+            // Caja de munición dorada con balas visibles
+            const caja = new THREE.Mesh(
+                new THREE.BoxGeometry(0.5, 0.3, 0.35),
+                new THREE.MeshPhongMaterial({ color: 0xB8860B, shininess: 40 })
+            );
+            grupo.add(caja);
+            // Tapa
+            const tapa = new THREE.Mesh(
+                new THREE.BoxGeometry(0.52, 0.05, 0.37),
+                new THREE.MeshPhongMaterial({ color: 0xDAA520, shininess: 60 })
+            );
+            tapa.position.y = 0.17;
+            grupo.add(tapa);
+            // Balas asomando
+            for (let b = 0; b < 3; b++) {
+                const bala = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.03, 0.03, 0.15, 6),
+                    new THREE.MeshPhongMaterial({ color: 0xFFD700, shininess: 100 })
+                );
+                bala.position.set(-0.1 + b * 0.1, 0.22, 0);
+                grupo.add(bala);
+                // Punta de bala
+                const punta = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.03, 0.06, 6),
+                    new THREE.MeshPhongMaterial({ color: 0xCC6600, shininess: 80 })
+                );
+                punta.position.set(-0.1 + b * 0.1, 0.32, 0);
+                grupo.add(punta);
+            }
+            break;
+        }
+        case 'botiquin': {
+            // Botiquín blanco con cruz roja
+            const cuerpo = new THREE.Mesh(
+                new THREE.BoxGeometry(0.6, 0.4, 0.35),
+                new THREE.MeshPhongMaterial({ color: 0xeeeeee, shininess: 30 })
+            );
+            grupo.add(cuerpo);
+            // Asa
+            const asa = new THREE.Mesh(
+                new THREE.BoxGeometry(0.3, 0.08, 0.06),
+                new THREE.MeshPhongMaterial({ color: 0xcccccc, shininess: 40 })
+            );
+            asa.position.y = 0.24;
+            grupo.add(asa);
+            // Cruz roja horizontal
+            const cruzH = new THREE.Mesh(
+                new THREE.BoxGeometry(0.25, 0.08, 0.01),
+                new THREE.MeshPhongMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.3 })
+            );
+            cruzH.position.set(0, 0, 0.18);
+            grupo.add(cruzH);
+            // Cruz roja vertical
+            const cruzV = new THREE.Mesh(
+                new THREE.BoxGeometry(0.08, 0.25, 0.01),
+                new THREE.MeshPhongMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.3 })
+            );
+            cruzV.position.set(0, 0, 0.18);
+            grupo.add(cruzV);
+            // Cierre
+            const cierre = new THREE.Mesh(
+                new THREE.BoxGeometry(0.06, 0.06, 0.37),
+                new THREE.MeshPhongMaterial({ color: 0x888888, shininess: 80 })
+            );
+            cierre.position.set(0, 0.2, 0);
+            grupo.add(cierre);
+            break;
+        }
+        case 'arma': {
+            // Rifle/arma detallada
+            // Cuerpo principal
+            const cuerpo = new THREE.Mesh(
+                new THREE.BoxGeometry(1.0, 0.15, 0.12),
+                new THREE.MeshPhongMaterial({ color: 0x333333, shininess: 60 })
+            );
+            grupo.add(cuerpo);
+            // Cañón
+            const canon = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.03, 0.035, 0.5, 8),
+                new THREE.MeshPhongMaterial({ color: 0x222222, shininess: 90 })
+            );
+            canon.rotation.z = Math.PI / 2;
+            canon.position.set(0.7, 0.03, 0);
+            grupo.add(canon);
+            // Culata
+            const culata = new THREE.Mesh(
+                new THREE.BoxGeometry(0.25, 0.2, 0.1),
+                new THREE.MeshPhongMaterial({ color: 0x5C3A1E, shininess: 15 })
+            );
+            culata.position.set(-0.55, -0.02, 0);
+            grupo.add(culata);
+            // Gatillo/guardamonte
+            const gatillo = new THREE.Mesh(
+                new THREE.BoxGeometry(0.12, 0.12, 0.08),
+                new THREE.MeshPhongMaterial({ color: 0x222222, shininess: 50 })
+            );
+            gatillo.position.set(-0.1, -0.12, 0);
+            grupo.add(gatillo);
+            // Cargador
+            const cargador = new THREE.Mesh(
+                new THREE.BoxGeometry(0.08, 0.18, 0.1),
+                new THREE.MeshPhongMaterial({ color: 0x444444, shininess: 50 })
+            );
+            cargador.position.set(0.05, -0.15, 0);
+            grupo.add(cargador);
+            // Mira
+            const mira = new THREE.Mesh(
+                new THREE.BoxGeometry(0.04, 0.06, 0.04),
+                new THREE.MeshPhongMaterial({ color: 0x111111, shininess: 40 })
+            );
+            mira.position.set(0.2, 0.12, 0);
+            grupo.add(mira);
+            break;
+        }
+    }
+    
+    grupo.userData = { tipo: tipo };
+    return grupo;
+}
+
 // Generar items
 function generarItems(cantidad) {
     const tiposItems = ['municion', 'botiquin', 'arma'];
     
     for (let i = 0; i < cantidad; i++) {
         const tipo = tiposItems[Math.floor(Math.random() * tiposItems.length)];
-        let geometria, material, color;
-
-        switch (tipo) {
-            case 'municion':
-                geometria = new THREE.BoxGeometry(0.5, 0.3, 0.3);
-                color = 0xFFD700;
-                break;
-            case 'botiquin':
-                geometria = new THREE.BoxGeometry(0.8, 0.3, 0.6);
-                color = 0xFF0000;
-                break;
-            case 'arma':
-                geometria = new THREE.BoxGeometry(1.2, 0.2, 0.3);
-                color = 0x808080;
-                break;
-        }
-
-        material = new THREE.MeshPhongMaterial({ color: color, emissive: color, emissiveIntensity: 0.2, shininess: 30 });
-        const item = new THREE.Mesh(geometria, material);
+        const item = crearModeloItem(tipo);
 
         item.position.x = (Math.random() - 0.5) * 180;
         item.position.y = 0.5;
         item.position.z = (Math.random() - 0.5) * 180;
-        item.userData = { tipo: tipo };
 
         scene.add(item);
         items.push(item);
@@ -649,6 +800,13 @@ function hayColision(x, z) {
 // Actualizar movimiento del jugador
 function actualizarMovimiento() {
     if (gameState.pausado) return;
+
+    // Si el jugador está atrapado en un colisionable, sacarlo
+    if (hayColision(camera.position.x, camera.position.z)) {
+        camera.position.x += 2;
+        camera.position.z += 2;
+        return;
+    }
 
     const velocidad = 0.1;
     const velocidadCorrer = 0.2;
@@ -859,7 +1017,7 @@ function actualizarZombies() {
             // Cooldown de ataque: solo dañar cada 800ms
             if (!zombie.userData.ultimoAtaque || tiempoActual - zombie.userData.ultimoAtaque > 800) {
                 zombie.userData.ultimoAtaque = tiempoActual;
-                dañarJugador(15);
+                dañarJugador(15 + (zombie.userData.dañoExtra || 0));
                 
                 // Efecto visual: zombie parpadea rojo al atacar
                 zombie.traverse((child) => {
@@ -902,20 +1060,12 @@ function dañarCaja(caja, daño) {
         const tiposItems = ['municion', 'botiquin', 'arma'];
         for (let i = 0; i < cantItems; i++) {
             const tipo = tiposItems[Math.floor(Math.random() * tiposItems.length)];
-            let geometria, color;
-            switch (tipo) {
-                case 'municion': geometria = new THREE.BoxGeometry(0.5, 0.3, 0.3); color = 0xFFD700; break;
-                case 'botiquin': geometria = new THREE.BoxGeometry(0.8, 0.3, 0.6); color = 0xFF0000; break;
-                case 'arma': geometria = new THREE.BoxGeometry(1.2, 0.2, 0.3); color = 0x808080; break;
-            }
-            const material = new THREE.MeshPhongMaterial({ color: color, emissive: color, emissiveIntensity: 0.2, shininess: 30 });
-            const item = new THREE.Mesh(geometria, material);
+            const item = crearModeloItem(tipo);
             item.position.set(
                 caja.position.x + (Math.random() - 0.5) * 3,
                 0.5,
                 caja.position.z + (Math.random() - 0.5) * 3
             );
-            item.userData = { tipo: tipo };
             scene.add(item);
             items.push(item);
         }
@@ -1020,10 +1170,13 @@ function dañarZombie(zombie, daño) {
             };
             animarMuerte();
 
-            // Generar nuevo zombie después de un tiempo
+            // Generar nuevo zombie con dificultad escalada
             setTimeout(() => {
-                if (zombies.length < 15) generarZombies(1);
-            }, 5000);
+                if (zombies.length < 15) {
+                    const oleada = Math.floor(gameState.zombiesEliminados / 20);
+                    generarZombiesMejorados(1, oleada);
+                }
+            }, Math.max(1000, 3000 - gameState.zombiesEliminados * 50));
         }
     }
 }
@@ -1268,7 +1421,7 @@ function reiniciarJuego() {
     // Limpiar zombies y regenerar
     zombies.forEach(zombie => scene.remove(zombie));
     zombies = [];
-    generarZombies(10);
+    generarZombies(15);
     
     actualizarHUD();
 }
